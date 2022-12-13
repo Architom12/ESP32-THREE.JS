@@ -1,22 +1,7 @@
-/*
-  Rui Santos
-  Complete project details at https://RandomNerdTutorials.com/esp32-mpu-6050-web-server/
+let scene, camera, renderer, cube, container;
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files.
-  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-*/
 
-let scene, camera, rendered, cube;
-
-function parentWidth(elem) {
-  return elem.parentElement.clientWidth;
-}
-
-function parentHeight(elem) {
-  return elem.parentElement.clientHeight;
-}
-
-function init3D(){
+function init3D() {
   container = document.querySelector(".scene");
 
   //Create scene
@@ -46,75 +31,114 @@ function init3D(){
 
   // Create a geometry
   let loader = new THREE.GLTFLoader();
-  loader.load("./scene.gltf", function(gltf) {
-    
+  loader.load("./scene.gltf", function (gltf) {
+    cube = gltf.scene.children[0];
+    scene.add(cube);
+    camera.position.z = 5;
+    renderer.setAnimationLoop( ( )=>{
 
-  cube = gltf.scene.children[0];
-  scene.add(cube);
-  camera.position.z = 5;
-  renderer.render(scene, camera);
+      if(cube){
+      camera.lookAt( cube );
+      
+      }
+      renderer.render(scene, camera);
+      
+      })
+  });
 }
+function parentSize(elem) {
+  return {w:elem.parentElement.clientWidth,
+          h:elem.parentElement.clientHeight}
+}
+
 
 // Resize the 3D object when the browser window changes size
-function onWindowResize(){
-  camera.aspect = parentWidth(document.getElementById("./scene.gltf")) / parentHeight(document.getElementById("./scene.gltf"));
-  //camera.aspect = window.innerWidth /  window.innerHeight;
+function onWindowResize() {
+  let {w,h}= parentSize(renderer.domElement);
+  camera.aspect = w/h;
   camera.updateProjectionMatrix();
-  //renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setSize(parentWidth(document.getElementById("./scene.gltf")), parentHeight(document.getElementById("./scene.gltf")));
-
+  renderer.setSize( w,h);
 }
-
-window.addEventListener('resize', onWindowResize, false);
 
 // Create the 3D representation
 init3D();
+window.addEventListener("resize", onWindowResize, false);
 
 // Create events for the sensor readings
 if (!!window.EventSource) {
-  var source = new EventSource('/events');
+  var source = new EventSource("/events");
 
-  source.addEventListener('open', function(e) {
-    console.log("Events Connected");
-  }, false);
+  source.addEventListener(
+    "open",
+    function (e) {
+      console.log("Events Connected");
+    },
+    false
+  );
 
-  source.addEventListener('error', function(e) {
-    if (e.target.readyState != EventSource.OPEN) {
-      console.log("Events Disconnected");
-    }
-  }, false);
+  source.addEventListener(
+    "error",
+    function (e) {
+      if (e.target.readyState != EventSource.OPEN) {
+        console.log("Events Disconnected");
+      }
+    },
+    false
+  );
 
-  source.addEventListener('gyro_readings', function(e) {
-    //console.log("gyro_readings", e.data);
-    var obj = JSON.parse(e.data);
-    document.getElementById("gyroX").innerHTML = obj.gyroX;
-    document.getElementById("gyroY").innerHTML = obj.gyroY;
-    document.getElementById("gyroZ").innerHTML = obj.gyroZ;
+  source.addEventListener(
+    "gyro_readings",
+    function (e) {
+      //console.log("gyro_readings", e.data);
+      var obj = JSON.parse(e.data);
+      document.getElementById("gyroX").innerHTML = obj.gyroX;
+      document.getElementById("gyroY").innerHTML = obj.gyroY;
+      document.getElementById("gyroZ").innerHTML = obj.gyroZ;
 
-    // Change cube rotation after receiving the readinds
-    cube.rotation.x = obj.gyroY;
-    cube.rotation.z = obj.gyroX;
-    cube.rotation.y = obj.gyroZ;
-    renderer.render(scene, camera);
-  }, false);
+      // Change cube rotation after receiving the readinds
+      if(cube){  //Make sure it's been loaded before trying to change it!
+        cube.rotation.x = obj.gyroY;
+        cube.rotation.z = obj.gyroX;
+        cube.rotation.y = obj.gyroZ;
+      }
+      renderer.setAnimationLoop( ( )=>{
 
-  source.addEventListener('temperature_reading', function(e) {
-    console.log("temperature_reading", e.data);
-    document.getElementById("temp").innerHTML = e.data;
-  }, false);
+        if(cube){
+        camera.lookAt( cube );
+        
+        }
+        renderer.render(scene, camera);
+        
+        })
+    },
+    false
+  );
 
-  source.addEventListener('accelerometer_readings', function(e) {
-    console.log("accelerometer_readings", e.data);
-    var obj = JSON.parse(e.data);
-    document.getElementById("accX").innerHTML = obj.accX;
-    document.getElementById("accY").innerHTML = obj.accY;
-    document.getElementById("accZ").innerHTML = obj.accZ;
-  }, false);
+  source.addEventListener(
+    "temperature_reading",
+    function (e) {
+      console.log("temperature_reading", e.data);
+      document.getElementById("temp").innerHTML = e.data;
+    },
+    false
+  );
+
+  source.addEventListener(
+    "accelerometer_readings",
+    function (e) {
+      console.log("accelerometer_readings", e.data);
+      var obj = JSON.parse(e.data);
+      document.getElementById("accX").innerHTML = obj.accX;
+      document.getElementById("accY").innerHTML = obj.accY;
+      document.getElementById("accZ").innerHTML = obj.accZ;
+    },
+    false
+  );
 }
 
-function resetPosition(element){
+function resetPosition(element) {
   var xhr = new XMLHttpRequest();
-  xhr.open("GET", "/"+element.id, true);
+  xhr.open("GET", "/" + element.id, true);
   console.log(element.id);
   xhr.send();
 }
